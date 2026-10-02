@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-spec.schema.json",
+  "title": "Agent Spec",
+  "type": "object",
+  "required": ["spec_version", "agent", "brief", "architecture", "workflow", "guardrails", "instrumentation", "evals"],
+  "properties": {
+    "spec_version": { "type": "string" },
+    "agent": {
+      "type": "object",
+      "required": ["id", "name", "version", "archetype", "summary"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "name": { "type": "string" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "archetype": { "enum": ["conversational", "guided", "copilot", "background", "event-triggered", "multi-agent"] },
+        "summary": { "type": "string" }
+      }
+    },
+    "brief": {
+      "type": "object",
+      "required": ["goal", "users", "success_metrics", "out_of_scope"],
+      "properties": {
+        "goal": { "type": "string" },
+        "users": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "success_metrics": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "object", "required": ["name", "target"], "properties": { "name": { "type": "string" }, "target": { "type": "string" } } }
+        },
+        "out_of_scope": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "architecture": {
+      "type": "object",
+      "required": ["type", "rationale"],
+      "properties": { "type": { "enum": ["workflow", "agent", "multi-agent"] }, "rationale": { "type": "string" } }
+    },
+    "workflow": {
+      "type": "object",
+      "required": ["entry", "nodes"],
+      "properties": {
+        "entry": { "type": "string" },
+        "nodes": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "type"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+              "title": { "type": "string" },
+              "type": { "enum": ["llm", "tool", "deterministic", "router", "choice", "form", "review", "approval", "display", "end"] },
+              "ui": { "type": "string" },
+              "tools": { "type": "array", "items": { "type": "string" } },
+              "events": { "type": "array", "items": { "type": "string" } },
+              "next": {
+                "type": "array",
+                "items": { "type": "object", "required": ["to"], "properties": { "to": { "type": "string" }, "when": { "type": "string" } } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "guardrails": {
+      "type": "object",
+      "required": ["approvals", "permissions", "failure_paths", "escalation"]
+    },
+    "instrumentation": {
+      "type": "object",
+      "required": ["pii_in_events", "trace_content"],
+      "properties": {
+        "pii_in_events": { "type": "boolean" },
+        "trace_content": { "type": "boolean" },
+        "extra_events": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "evals": {
+      "type": "object",
+      "required": ["scenarios"],
+      "properties": {
+        "scenarios": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "object", "required": ["id", "description", "expect"] }
+        }
+      }
+    }
+  }
+}

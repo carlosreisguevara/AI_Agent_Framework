@@ -1,0 +1,116 @@
+# Example: a guided (non-chat) agent. The user picks and edits; the model drafts.
+spec_version: "0.1"
+
+agent:
+  id: guided-report-builder
+  name: Weekly Report Builder
+  version: 0.1.0
+  archetype: guided
+  summary: Helps a team lead turn raw project notes into a weekly status report in under five minutes.
+
+brief:
+  goal: Produce a ready-to-send weekly status report from rough notes, with the user choosing tone and highlights.
+  users:
+    - Team leads who write a weekly update and dislike starting from a blank page
+  success_metrics:
+    - name: completion_rate
+      target: ">= 75% of started runs reach run_completed"
+    - name: time_to_value
+      target: "median under 5 minutes from run_started to draft_accepted"
+    - name: edit_rate
+      target: "<= 40% of drafts need manual edits (lower means better first drafts)"
+  out_of_scope:
+    - Sending the report on the user's behalf
+    - Pulling data from systems the user has not connected
+
+architecture:
+  type: workflow
+  rationale: The steps are fixed (collect, extract, choose, draft, review). Only the extraction and drafting need a model, so a workflow is cheaper, testable, and predictable. No dynamic planning is needed.
+
+workflow:
+  entry: collect_notes
+  nodes:
+    - id: collect_notes
+      title: Paste your notes
+      type: form
+      ui: form-short
+      next:
+        - to: extract_highlights
+
+    - id: extract_highlights
+      title: Extract candidate highlights
+      type: llm
+      next:
+        - to: pick_highlights
+
+    - id: pick_highlights
+      title: Choose highlights to include
+      type: choice
+      ui: choice-cards-multi
+      next:
+        - to: pick_tone
+          when: selected
+
+    - id: pick_tone
+      title: Choose a tone
+      type: choice
+      ui: choice-cards-single
+      next:
+        - to: generate_draft
+          when: selected
+
+    - id: generate_draft
+      title: Write the report
+      type: llm
+      next:
+        - to: review_draft
+
+    - id: review_draft
+      title: Review and edit
+      type: review
+      ui: draft-review
+      next:
+        - to: export_report
+          when: accepted
+        - to: generate_draft
+          when: regenerate
+
+    - id: export_report
+      title: Copy or download
+      type: display
+      ui: result-canvas
+      next:
+        - to: done
+
+    - id: done
+      title: Done
+      type: end
+
+guardrails:
+  approvals: []
+  permissions:
+    tools_allowed: []
+    data_access:
+      - pasted notes only, not stored after the run ends
+  failure_paths:
+    default: show-error-with-retry
+    extract_highlights: fall back to showing raw notes and let the user pick manually
+  escalation: Link to a plain template the user can fill in by hand.
+
+instrumentation:
+  pii_in_events: false
+  trace_content: false
+  extra_events:
+    - tone_changed
+
+evals:
+  scenarios:
+    - id: happy-path
+      description: Ten bullet notes produce a draft that the user accepts without edits.
+      expect: run_completed with draft_accepted and no draft_edited
+    - id: sparse-notes
+      description: Two-line notes. The agent should ask for more rather than invent content.
+      expect: draft contains no claims absent from the notes
+    - id: extraction-failure
+      description: The model call fails at extract_highlights.
+      expect: user sees the fallback and can still finish

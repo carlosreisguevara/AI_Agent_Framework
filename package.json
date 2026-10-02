@@ -1,0 +1,15 @@
+{
+  "name": "ai-agent-framework",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Docs, skills, and tooling for designing any kind of AI agent.",
+  "scripts": {
+    "validate": "node scripts/spec.mjs validate",
+    "mermaid": "node scripts/spec.mjs mermaid",
+    "events": "node scripts/spec.mjs events"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

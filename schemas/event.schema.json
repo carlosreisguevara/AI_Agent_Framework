@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "event.schema.json",
+  "title": "Product event envelope",
+  "description": "Every product event carries this envelope. Event-specific fields go in `props`. Never put raw user text in props unless the spec sets pii_in_events: true.",
+  "type": "object",
+  "required": ["event", "ts", "agent_id", "agent_version", "session_id", "run_id", "user_hash"],
+  "properties": {
+    "event": { "type": "string", "pattern": "^[a-z]+(_[a-z]+)+$", "description": "object_action, snake_case, past tense action" },
+    "ts": { "type": "string", "format": "date-time" },
+    "agent_id": { "type": "string" },
+    "agent_version": { "type": "string" },
+    "session_id": { "type": "string", "description": "One user visit; may contain several runs" },
+    "run_id": { "type": "string", "description": "One execution of the workflow" },
+    "user_hash": { "type": "string", "description": "Salted hash of the user id; never the raw id" },
+    "node_id": { "type": "string", "description": "Workflow node this event belongs to, when applicable" },
+    "step_index": { "type": "integer", "minimum": 0 },
+    "duration_ms": { "type": "integer", "minimum": 0 },
+    "props": { "type": "object" }
+  }
+}

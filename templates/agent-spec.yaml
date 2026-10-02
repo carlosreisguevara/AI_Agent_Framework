@@ -1,0 +1,82 @@
+# Agent Spec: the single source of truth for one agent.
+# Every skill in this framework reads and writes this file.
+# Validate:  node scripts/spec.mjs validate <this-file>
+# Diagram:   node scripts/spec.mjs mermaid  <this-file>
+# Events:    node scripts/spec.mjs events   <this-file>
+# Delete the comments you don't need; keep the structure.
+
+spec_version: "0.1"
+
+agent:
+  id: my-agent                 # kebab-case, stable. Used in every event as agent_id
+  name: My Agent
+  version: 0.1.0               # semver. Bump on any workflow, prompt, or tool change
+  archetype: guided            # conversational | guided | copilot | background | event-triggered | multi-agent
+  summary: One sentence on what this agent does and for whom.
+
+brief:
+  goal: The outcome the user gets, in one sentence.
+  users:
+    - Who uses it and in what situation
+  success_metrics:             # at least one; these drive instrumentation
+    - name: completion_rate
+      target: ">= 70% of started runs reach run_completed"
+  out_of_scope:
+    - Things this agent must refuse or hand off
+
+architecture:
+  type: workflow               # workflow | agent | multi-agent
+  rationale: Why this is the simplest design that works (see docs/01-foundations/workflow-vs-agent.md).
+
+workflow:
+  entry: collect_input
+  # Node types: llm | tool | deterministic | router | choice | form | review | approval | display | end
+  # Interactive types (choice, form, review, approval, display) MUST declare `ui`.
+  nodes:
+    - id: collect_input
+      title: Tell us what you need
+      type: form
+      ui: form-short
+      next:
+        - to: generate_draft
+
+    - id: generate_draft
+      title: Generate draft
+      type: llm
+      tools: []
+      next:
+        - to: review_draft
+
+    - id: review_draft
+      title: Review and edit the draft
+      type: review
+      ui: draft-review
+      next:
+        - to: done
+          when: accepted
+        - to: generate_draft
+          when: regenerate
+
+    - id: done
+      title: Done
+      type: end
+
+guardrails:
+  approvals: []                # node ids that need explicit human approval (type: approval)
+  permissions:
+    tools_allowed: []
+    data_access: []
+  failure_paths:               # what happens when a node fails
+    default: show-error-with-retry
+  escalation: Where the user goes when the agent cannot help.
+
+instrumentation:
+  pii_in_events: false         # never put raw user text in product events
+  trace_content: false         # prompt/response bodies off unless explicitly enabled
+  extra_events: []             # custom events beyond the auto-derived ones
+
+evals:
+  scenarios:
+    - id: happy-path
+      description: Typical input reaches run_completed.
+      expect: run_completed within 5 steps
